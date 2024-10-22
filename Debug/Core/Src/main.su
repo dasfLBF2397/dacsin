@@ -1,0 +1,15 @@
+../Core/Src/main.c:106:6:updatePhaseIncrement	16	static
+../Core/Src/main.c:109:6:HAL_TIM_periodElpasedCallback	24	static
+../Core/Src/main.c:125:13:generate_sine_wave	16	static
+../Core/Src/main.c:185:10:sample_adc	8	static
+../Core/Src/main.c:200:5:main	24	static
+../Core/Src/main.c:267:6:SystemClock_Config	88	static
+../Core/Src/main.c:313:13:MX_ADC3_Init	24	static
+../Core/Src/main.c:365:13:MX_DAC_Init	16	static
+../Core/Src/main.c:413:13:MX_I2C1_Init	8	static
+../Core/Src/main.c:447:13:MX_TIM2_Init	32	static
+../Core/Src/main.c:492:13:MX_TIM6_Init	16	static
+../Core/Src/main.c:530:13:MX_USART3_UART_Init	8	static
+../Core/Src/main.c:561:13:MX_DMA_Init	16	static
+../Core/Src/main.c:583:13:MX_GPIO_Init	56	static
+../Core/Src/main.c:698:6:Error_Handler	4	static,ignoring_inline_asm

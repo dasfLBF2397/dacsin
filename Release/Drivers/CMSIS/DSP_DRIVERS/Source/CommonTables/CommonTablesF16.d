@@ -1,0 +1,16 @@
+Drivers/CMSIS/DSP_DRIVERS/Source/CommonTables/CommonTablesF16.o: \
+ ../Drivers/CMSIS/DSP_DRIVERS/Source/CommonTables/CommonTablesF16.c \
+ ../Drivers/CMSIS/DSP_DRIVERS/Source/CommonTables/arm_common_tables_f16.c \
+ M:/STM32Workspace/DAC_sin/Drivers/CMSIS/DSP_DRIVERS/Include/arm_math_types_f16.h \
+ M:/STM32Workspace/DAC_sin/Drivers/CMSIS/DSP_DRIVERS/Include/arm_math_types.h \
+ ../Drivers/CMSIS/Include/cmsis_compiler.h \
+ ../Drivers/CMSIS/Include/cmsis_gcc.h \
+ ../Drivers/CMSIS/DSP_DRIVERS/Source/CommonTables/arm_const_structs_f16.c \
+ ../Drivers/CMSIS/DSP_DRIVERS/Source/CommonTables/arm_mve_tables_f16.c
+../Drivers/CMSIS/DSP_DRIVERS/Source/CommonTables/arm_common_tables_f16.c:
+M:/STM32Workspace/DAC_sin/Drivers/CMSIS/DSP_DRIVERS/Include/arm_math_types_f16.h:
+M:/STM32Workspace/DAC_sin/Drivers/CMSIS/DSP_DRIVERS/Include/arm_math_types.h:
+../Drivers/CMSIS/Include/cmsis_compiler.h:
+../Drivers/CMSIS/Include/cmsis_gcc.h:
+../Drivers/CMSIS/DSP_DRIVERS/Source/CommonTables/arm_const_structs_f16.c:
+../Drivers/CMSIS/DSP_DRIVERS/Source/CommonTables/arm_mve_tables_f16.c:
