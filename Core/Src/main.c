@@ -39,10 +39,13 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-#define PI 3.14
+#define PI 3.141592653
 #define SAMPLING_FREQUENCY 8000 //8Khz Sampling frequency
+#define SYSTEM_CLOCK 84000000
 #define SINE_LUT_SIZE 256
+#define MAX_SAFE_FTW 128 // Maximum FTW to avoid aliasing
 
+//for testing purpose only
 #define SIN_WAVE_10Khz 0
 #define SIN_WAVE_20Khz 0
 #define SIN_DDFS 1
@@ -58,7 +61,7 @@ DMA_HandleTypeDef hdma_dac1;
 I2C_HandleTypeDef hi2c1;
 
 TIM_HandleTypeDef htim2;
-TIM_HandleTypeDef htim6;
+DMA_HandleTypeDef hdma_tim2_up_ch3;
 
 UART_HandleTypeDef huart3;
 
@@ -66,8 +69,8 @@ UART_HandleTypeDef huart3;
 uint16_t dac_value = 0;
 
 uint32_t sine_wave_LUT[SINE_LUT_SIZE];
-uint32_t phase_accumulator = 0;
-uint32_t phase_increment = 0;
+volatile uint8_t phase_accumulator = 0;
+volatile uint8_t frequencyTuningWord = 0;
 
 /* Frequency LUT */
 float desired_frequency = 87.5; // can be changed
@@ -86,38 +89,31 @@ static void MX_DAC_Init(void);
 static void MX_ADC3_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_USART3_UART_Init(void);
-static void MX_TIM6_Init(void);
 /* USER CODE BEGIN PFP */
 static void generate_sine_wave(void);
-uint32_t sample_adc(void);
-void send_adc_values_over_usb(void);
-void HAL_TIM_periodElpasedCallback(TIM_HandleTypeDef *htim);
 void DAC_Update(void);
 void updatePhaseIncrement(float frequency);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-//void DAC_Update(void) {
-//	uint16_t index = (phase_accumulator >> 21) % SINE_SAMPLES;
-//	HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, (uint32_t *)sine_wave, SINE_ARRAY_SIZE, DAC_ALIGN_12B_R)
-//}
-
-void updatePhaseIncrement(float frequency){
-	phase_increment = (uint32_t) ((frequency/SAMPLING_FREQUENCY)*(1LL << 32));
+void DAC_Update(void) {
+    phase_accumulator += frequencyTuningWord;
+    uint8_t index = phase_accumulator % SINE_LUT_SIZE;
+    HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, sine_wave_LUT[index]);
 }
-void HAL_TIM_periodElpasedCallback(TIM_HandleTypeDef *htim){
-	uint32_t current_freq_index = 0;
-	if(htim->Instance == TIM6) {
-		current_freq_index = (phase_accumulator >> 24) & (SINE_LUT_SIZE - 1);
-		HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R,sine_wave_LUT[current_freq_index]);
 
-		phase_accumulator += phase_accumulator;
-		if(phase_accumulator >= (1LL << 32)) {
-			phase_accumulator -= (1LL << 32);
-		}
-	}
+
+void updatePhaseIncrement(float frequency) {
+    // Calculate the frequency tuning word (FTW) using integer arithmetic
+    uint32_t ftw = (frequency * SINE_LUT_SIZE) / SAMPLING_FREQUENCY;
+    if (ftw > MAX_SAFE_FTW) {
+        ftw = MAX_SAFE_FTW; // Limit FTW to avoid aliasing
+    }
+    frequencyTuningWord = (uint8_t)ftw;
 }
+
+
 /**
  * @brief to generate sine wave
  * @retrival none
@@ -126,69 +122,21 @@ static void generate_sine_wave() {
 
 #if SIN_DDFS
 	for(uint16_t i = 0; i < SINE_LUT_SIZE; i++){
-		sine_wave_LUT[i] = (uint16_t)sin((2.0f * PI * i/SINE_LUT_SIZE)*1822 + 2046);
-	}
-#endif
-#if SIN_WAVE_10Khz
-	for(uint8_t i = 0; i < SINE_ARRAY_SIZE; i++) {
-
-		float phase = (2.0f * PI * i * f[jj++%N])/SINE_ARRAY_SIZE;
-		float value = arm_sin_f32(phase);
-		sine_wave_LUT[i] = (uint16_t)(value * 1822 + 2046);
+		sine_wave_LUT[i] = (uint32_t)sin((2.0f * PI * i/SINE_LUT_SIZE)*1822 + 2046);
 	}
 #endif
 
-#if SIN_WAVE_20Khz
-	for(uint8_t i = 0; i < SINE_ARRAY_SIZE_20Khz; i++) {
-			sine_wave[i] = (uint16_t)(sin(i*2*PI / SINE_ARRAY_SIZE_20Khz) * 1822 + 2046);
-	}
-#endif
+
 }
 // (0x0E0) to (0xF1C) --> offset 7FE / 2046
 // read VDDA
-/*
- * @brief to send ADC values over USB
- * @retrival none
- */
-/*
-void send_adc_values_over_usb() {
-    char usb_buffer[ADC_BUFFER_SIZE];
-
-    int len = 0;
-
-    for (uint16_t i = 0; i < ADC_BUFFER_SIZE; i++) {
-        int written = snprintf(usb_buffer + len, sizeof(usb_buffer) - len, "%u, ", adc_buffer[i]);
-
-        if (written < 0 || written >= sizeof(usb_buffer) - len) {
-            // If snprintf fails or the buffer is full, break the loop
-            break;
-        }
-
-        len += written;
+/* Timer 6 interrupt handler */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+    if (htim->Instance == TIM6) {
+        DAC_Update(); // Update DAC output
     }
-
-    // Replace the last comma with a newline character
-    if (len > 0) {
-        usb_buffer[len - 2] = '\n';
-        usb_buffer[len - 1] = '\0';
-    }
-
-    CDC_Transmit_FS((uint8_t *)usb_buffer, len);
-
 }
 
-*/
-/**
- * @brief to sample the adc signal
- * @retrival none
- */
-uint32_t sample_adc() {
-	if(HAL_ADC_PollForConversion(&hadc3,10) == HAL_OK) {
-		return HAL_ADC_GetValue(&hadc3);
-	}
-
-	return 0;
-}
 
 
 /* USER CODE END 0 */
@@ -229,7 +177,6 @@ int main(void)
   MX_TIM2_Init();
   MX_USART3_UART_Init();
   MX_USB_DEVICE_Init();
-  MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
   generate_sine_wave();
 
@@ -385,7 +332,7 @@ static void MX_DAC_Init(void)
 
   /** DAC channel OUT1 config
   */
-  sConfig.DAC_Trigger = DAC_TRIGGER_T6_TRGO;
+  sConfig.DAC_Trigger = DAC_TRIGGER_T2_TRGO;
   sConfig.DAC_OutputBuffer = DAC_OUTPUTBUFFER_ENABLE;
   if (HAL_DAC_ConfigChannel(&hdac, &sConfig, DAC_CHANNEL_1) != HAL_OK)
   {
@@ -453,14 +400,15 @@ static void MX_TIM2_Init(void)
 
   TIM_ClockConfigTypeDef sClockSourceConfig = {0};
   TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
 
   /* USER CODE BEGIN TIM2_Init 1 */
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 0;
+  htim2.Init.Prescaler = 10499;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 64;
+  htim2.Init.Period = 999;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -472,53 +420,27 @@ static void MX_TIM2_Init(void)
   {
     Error_Handler();
   }
+  if (HAL_TIM_OC_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
   if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
   {
     Error_Handler();
   }
+  sConfigOC.OCMode = TIM_OCMODE_TIMING;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_OC_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
   /* USER CODE BEGIN TIM2_Init 2 */
 
   /* USER CODE END TIM2_Init 2 */
-
-}
-
-/**
-  * @brief TIM6 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_TIM6_Init(void)
-{
-
-  /* USER CODE BEGIN TIM6_Init 0 */
-
-  /* USER CODE END TIM6_Init 0 */
-
-  TIM_MasterConfigTypeDef sMasterConfig = {0};
-
-  /* USER CODE BEGIN TIM6_Init 1 */
-
-  /* USER CODE END TIM6_Init 1 */
-  htim6.Instance = TIM6;
-  htim6.Init.Prescaler = 10;
-  htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim6.Init.Period = 949;
-  htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim6, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN TIM6_Init 2 */
-
-  /* USER CODE END TIM6_Init 2 */
 
 }
 
@@ -566,6 +488,9 @@ static void MX_DMA_Init(void)
   __HAL_RCC_DMA2_CLK_ENABLE();
 
   /* DMA interrupt init */
+  /* DMA1_Stream1_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream1_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream1_IRQn);
   /* DMA1_Stream5_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Stream5_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Stream5_IRQn);

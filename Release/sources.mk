@@ -24,21 +24,6 @@ C_DEPS :=
 SUBDIRS := \
 Core/Src \
 Core/Startup \
-Drivers/CMSIS/DSP_DRIVERS/Source/BasicMathFunctions \
-Drivers/CMSIS/DSP_DRIVERS/Source/BayesFunctions \
-Drivers/CMSIS/DSP_DRIVERS/Source/CommonTables \
-Drivers/CMSIS/DSP_DRIVERS/Source/ComplexMathFunctions \
-Drivers/CMSIS/DSP_DRIVERS/Source/ControllerFunctions \
-Drivers/CMSIS/DSP_DRIVERS/Source/DistanceFunctions \
-Drivers/CMSIS/DSP_DRIVERS/Source/FastMathFunctions \
-Drivers/CMSIS/DSP_DRIVERS/Source/FilteringFunctions \
-Drivers/CMSIS/DSP_DRIVERS/Source/InterpolationFunctions \
-Drivers/CMSIS/DSP_DRIVERS/Source/MatrixFunctions \
-Drivers/CMSIS/DSP_DRIVERS/Source/QuaternionMathFunctions \
-Drivers/CMSIS/DSP_DRIVERS/Source/SVMFunctions \
-Drivers/CMSIS/DSP_DRIVERS/Source/StatisticsFunctions \
-Drivers/CMSIS/DSP_DRIVERS/Source/SupportFunctions \
-Drivers/CMSIS/DSP_DRIVERS/Source/TransformFunctions \
 Drivers/STM32F4xx_HAL_Driver/Src \
 Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Src \
 Middlewares/ST/STM32_USB_Device_Library/Core/Src \
